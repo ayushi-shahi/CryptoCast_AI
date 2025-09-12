@@ -199,42 +199,66 @@ function updateMarketStats(globalData) {
 }
 
 function updateCryptoTable(coins) {
+    if (!coins || !Array.isArray(coins)) {
+        console.warn("Crypto data unavailable");
+        return;
+    }
+
     const tableBody = document.getElementById('cryptoTable');
+    if (!tableBody) return;
+
     tableBody.innerHTML = '';
-    
+
     coins.forEach(coin => {
+        if (!coin || !coin.id) return; // skip invalid entries
+
+        const price = typeof coin.current_price === "number" 
+            ? coin.current_price 
+            : 0;
+
+        const price24h = typeof coin.price_change_percentage_24h === "number" 
+            ? coin.price_change_percentage_24h 
+            : 0;
+
+        const price7d = typeof coin.price_change_percentage_7d_in_currency === "number" 
+            ? coin.price_change_percentage_7d_in_currency 
+            : 0;
+
+        const sparkline = coin.sparkline_in_7d && Array.isArray(coin.sparkline_in_7d.price)
+            ? JSON.stringify(coin.sparkline_in_7d.price)
+            : "[]";
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${coin.market_cap_rank}</td>
+            <td>${coin.market_cap_rank || '-'}</td>
             <td>
                 <div class="d-flex align-items-center">
-                    <img src="${coin.image}" alt="${coin.name}" width="24" height="24" class="me-2">
+                    <img src="${coin.image || ''}" alt="${coin.name || ''}" width="24" height="24" class="me-2">
                     <div>
-                        <div>${coin.name}</div>
-                        <small class="text-muted">${coin.symbol.toUpperCase()}</small>
+                        <div>${coin.name || 'Unknown'}</div>
+                        <small class="text-muted">${(coin.symbol || '').toUpperCase()}</small>
                     </div>
                 </div>
             </td>
-            <td>$${coin.current_price.toFixed(coin.current_price < 1 ? 6 : 2)}</td>
+            <td>$${price.toFixed(price < 1 ? 6 : 2)}</td>
             <td>
-                <span class="badge ${coin.price_change_percentage_24h >= 0 ? 'bg-success' : 'bg-danger'}">
-                    ${coin.price_change_percentage_24h >= 0 ? '+' : ''}${coin.price_change_percentage_24h.toFixed(2)}%
+                <span class="badge ${price24h >= 0 ? 'bg-success' : 'bg-danger'}">
+                    ${price24h >= 0 ? '+' : ''}${price24h.toFixed(2)}%
                 </span>
             </td>
             <td>
-                <span class="badge ${coin.price_change_percentage_7d_in_currency >= 0 ? 'bg-success' : 'bg-danger'}">
-                    ${coin.price_change_percentage_7d_in_currency >= 0 ? '+' : ''}${coin.price_change_percentage_7d_in_currency.toFixed(2)}%
+                <span class="badge ${price7d >= 0 ? 'bg-success' : 'bg-danger'}">
+                    ${price7d >= 0 ? '+' : ''}${price7d.toFixed(2)}%
                 </span>
             </td>
-            <td>$${formatNumber(coin.market_cap)}</td>
+            <td>$${formatNumber(coin.market_cap || 0)}</td>
             <td>
-                <canvas class="sparkline" data-sparkline='${JSON.stringify(coin.sparkline_in_7d.price)}' width="100" height="30"></canvas>
+                <canvas class="sparkline" data-sparkline='${sparkline}' width="100" height="30"></canvas>
             </td>
         `;
         tableBody.appendChild(row);
     });
-    
-    // Draw sparklines
+
     drawSparklines();
 }
 

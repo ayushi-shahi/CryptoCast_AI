@@ -260,45 +260,39 @@ function updateDefiOverview() {
     document.getElementById('topGainer').textContent = `${topGainerData.symbol.toUpperCase()} +${topGainerData.price_change_percentage_24h.toFixed(2)}%`;
 }
 
-function updateDefiTable() {
+function updateDefiTable(protocols) {
+    if (!protocols || !Array.isArray(protocols) || protocols.length === 0) {
+        console.warn("DeFi data unavailable yet, waiting for updates...");
+        const tableBody = document.getElementById('defiTable');
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="text-center">Loading DeFi data...</td></tr>`;
+        }
+        return;
+    }
+
     const tableBody = document.getElementById('defiTable');
+    if (!tableBody) return;
+
     tableBody.innerHTML = '';
-    
-    defiData.forEach((protocol, index) => {
-        const row = document.createElement('tr');
+    protocols.forEach(protocol => {
+        if (!protocol) return;
+
+        const name = protocol.name || "Unknown";
+        const tvl = protocol.tvl ? formatCurrency(protocol.tvl) : "N/A";
+        const price = protocol.token && typeof protocol.token.price === "number"
+            ? `$${protocol.token.price.toFixed(protocol.token.price < 1 ? 6 : 2)}`
+            : "N/A";
+        const chain = protocol.chain || "Unknown";
+
+        const row = document.createElement("tr");
         row.innerHTML = `
-            <td>${index + 1}</td>
-            <td>
-                <div class="d-flex align-items-center">
-                    <img src="${protocol.image}" alt="${protocol.name}" width="24" height="24" class="me-2">
-                    <div>
-                        <div>${protocol.name}</div>
-                        <small class="text-muted">${protocol.symbol.toUpperCase()}</small>
-                    </div>
-                </div>
-            </td>
-            <td>$${protocol.current_price.toFixed(protocol.current_price < 1 ? 6 : 2)}</td>
-            <td>
-                <span class="badge ${protocol.price_change_percentage_24h >= 0 ? 'bg-success' : 'bg-danger'}">
-                    ${protocol.price_change_percentage_24h >= 0 ? '+' : ''}${protocol.price_change_percentage_24h.toFixed(2)}%
-                </span>
-            </td>
-            <td>
-                <span class="badge ${protocol.price_change_percentage_7d_in_currency >= 0 ? 'bg-success' : 'bg-danger'}">
-                    ${protocol.price_change_percentage_7d_in_currency >= 0 ? '+' : ''}${protocol.price_change_percentage_7d_in_currency.toFixed(2)}%
-                </span>
-            </td>
-            <td>$${formatNumber(protocol.market_cap)}</td>
-            <td>$${formatNumber(protocol.total_volume)}</td>
-            <td>
-                <canvas class="sparkline" data-sparkline='${JSON.stringify(protocol.sparkline_in_7d.price)}' width="80" height="30"></canvas>
-            </td>
+            <td>${name}</td>
+            <td>${tvl}</td>
+            <td>${price}</td>
+            <td>${chain}</td>
         `;
         tableBody.appendChild(row);
     });
-    
-    // Draw sparklines
-    drawSparklines();
 }
 
 function updateDefiChart(isPieChart) {

@@ -403,40 +403,37 @@ function createModelCharts(data) {
     }
 }
 
-function createModelChart(canvasId, predictions, color) {
+// Keep a reference to charts
+let charts = {};
+
+function createModelChart(canvasId, labels, values, modelName) {
     const ctx = document.getElementById(canvasId).getContext('2d');
-    
-    new Chart(ctx, {
+
+    // Destroy existing chart if it exists
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    charts[canvasId] = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: Array.from({length: predictions.length}, (_, i) => `+${i+1}h`),
+            labels: labels,
             datasets: [{
-                data: predictions,
-                borderColor: color,
-                backgroundColor: color.replace('RGB', 'RGBA').replace(')', ', 0.1)'),
-                borderWidth: 1,
-                pointRadius: 2,
+                label: modelName,
+                data: values,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
                 tension: 0.1
             }]
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                x: {
-                    display: false
-                },
-                y: {
-                    display: false
-                }
-            }
+            maintainAspectRatio: false
         }
     });
 }
+
 
 function getConfidenceBadgeClass(level) {
     switch(level.toLowerCase()) {
