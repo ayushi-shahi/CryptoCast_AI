@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 class AIPredictor:
     def __init__(self):
+        
         self.models = {
             'random_forest': RandomForestRegressor(n_estimators=100, random_state=42),
             'linear_regression': LinearRegression()
