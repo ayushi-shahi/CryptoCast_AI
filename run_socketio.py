@@ -2,16 +2,15 @@
 """
 Startup script for the Blockchain Analytics Dashboard with WebSocket support
 """
-import os
-from app import socketio, app
+import uvicorn
+from app import app
 
 if __name__ == '__main__':
-    # Use SocketIO server instead of regular Flask
-    socketio.run(
-        app, 
+    # Use uvicorn server for FastAPI
+    uvicorn.run(
+        "app:app",
         host='0.0.0.0', 
         port=5000, 
-        debug=True,
-        use_reloader=True,
-        log_output=True
+        reload=True,
+        log_level="debug"
     )

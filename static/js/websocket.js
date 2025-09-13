@@ -3,85 +3,146 @@
  * Blockchain Analytics Dashboard
  */
 
-// Initialize Socket.IO connection
-const socket = io();
+// Initialize native WebSocket connection
+let socket;
 let isConnected = false;
 let subscribedCoins = new Set();
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+const reconnectDelay = 3000; // 3 seconds
 
-// Connection event handlers
-socket.on('connect', function() {
-    console.log('Connected to WebSocket server');
-    isConnected = true;
-    updateConnectionStatus(true);
-    
-    // Show connection notification
-    showNotification('Connected to live price feeds', 'success', 3000);
-});
-
-socket.on('disconnect', function() {
-    console.log('Disconnected from WebSocket server');
-    isConnected = false;
-    updateConnectionStatus(false);
-    
-    // Show disconnection notification
-    showNotification('Disconnected from live feeds', 'warning', 3000);
-});
-
-socket.on('status', function(data) {
-    console.log('Server status:', data.msg);
-});
-
-// Price update handlers
-socket.on('price_update', function(data) {
-    console.log('Received price update:', data);
+// Initialize WebSocket connection
+function initWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
     
     try {
-        // Update market overview if on dashboard page
-        if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-            updateMarketDataReal(data);
-        }
+        socket = new WebSocket(wsUrl);
         
-        // Update any price displays with animation
-        updatePriceDisplays(data.coins);
+        socket.onopen = function() {
+            console.log('Connected to WebSocket server');
+            isConnected = true;
+            reconnectAttempts = 0;
+            updateConnectionStatus(true);
+            
+            // Show connection notification
+            if (typeof showNotification === 'function') {
+                showNotification('Connected to live price feeds', 'success', 3000);
+            }
+        };
         
-        // Update last updated timestamp
-        updateLastUpdatedTime();
+        socket.onclose = function() {
+            console.log('Disconnected from WebSocket server');
+            isConnected = false;
+            updateConnectionStatus(false);
+            
+            // Show disconnection notification
+            if (typeof showNotification === 'function') {
+                showNotification('Disconnected from live feeds', 'warning', 3000);
+            }
+            
+            // Attempt to reconnect
+            if (reconnectAttempts < maxReconnectAttempts) {
+                setTimeout(() => {
+                    reconnectAttempts++;
+                    console.log(`Attempting to reconnect... (${reconnectAttempts}/${maxReconnectAttempts})`);
+                    initWebSocket();
+                }, reconnectDelay);
+            }
+        };
+        
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+        
+        socket.onmessage = function(event) {
+            try {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+            }
+        };
         
     } catch (error) {
-        console.error('Error processing price update:', error);
+        console.error('Failed to initialize WebSocket:', error);
     }
-});
+}
 
-socket.on('trending_update', function(data) {
-    console.log('Received trending update:', data);
+// Handle incoming WebSocket messages
+function handleWebSocketMessage(message) {
+    const { type, data } = message;
     
-    try {
-        // Update trending coins if on dashboard page
-        if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-            updateTrendingCoinsReal(data.trending);
-        }
-    } catch (error) {
-        console.error('Error processing trending update:', error);
+    switch (type) {
+        case 'status':
+            console.log('Server status:', data.msg);
+            break;
+            
+        case 'price_update':
+            console.log('Received price update:', data);
+            try {
+                // Update market overview if on dashboard page
+                if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                    updateMarketDataReal(data);
+                }
+                
+                // Update any price displays with animation
+                updatePriceDisplays(data.coins);
+                
+                // Update last updated timestamp
+                updateLastUpdatedTime();
+                
+            } catch (error) {
+                console.error('Error processing price update:', error);
+            }
+            break;
+            
+        case 'trending_update':
+            console.log('Received trending update:', data);
+            try {
+                // Update trending coins if on dashboard page
+                if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                    updateTrendingCoinsReal(data.trending);
+                }
+            } catch (error) {
+                console.error('Error processing trending update:', error);
+            }
+            break;
+            
+        case 'live_price_response':
+            console.log('Received live price response:', data);
+            updateSingleCoinPrice(data);
+            break;
+            
+        case 'live_price_error':
+            console.error('Live price error:', data.error);
+            if (typeof showNotification === 'function') {
+                showNotification(`Price update error: ${data.error}`, 'danger');
+            }
+            break;
+            
+        case 'subscription_confirmed':
+            console.log('Subscription confirmed for:', data.coin_id);
+            subscribedCoins.add(data.coin_id);
+            if (typeof showNotification === 'function') {
+                showNotification(`Subscribed to ${data.coin_id} live updates`, 'info', 2000);
+            }
+            break;
+            
+        default:
+            console.log('Unknown message type:', type, data);
     }
-});
+}
 
-socket.on('live_price_response', function(data) {
-    console.log('Received live price response:', data);
-    
-    // Handle individual coin price updates
-    updateSingleCoinPrice(data);
-});
-
-socket.on('live_price_error', function(data) {
-    console.error('Live price error:', data.error);
-    showNotification(`Price update error: ${data.error}`, 'danger');
-});
-
-socket.on('subscription_confirmed', function(data) {
-    console.log('Subscription confirmed for:', data.coin_id);
-    subscribedCoins.add(data.coin_id);
-    showNotification(`Subscribed to ${data.coin_id} live updates`, 'info', 2000);
-});
+// Send message to WebSocket server
+function sendWebSocketMessage(type, data) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        const message = JSON.stringify({ type, data });
+        socket.send(message);
+    } else {
+        console.warn('WebSocket is not connected. Cannot send message:', type, data);
+    }
+}
 
 // WebSocket utility functions
 function updateConnectionStatus(connected) {
@@ -224,7 +285,7 @@ window.WebSocketAPI = {
     // Subscribe to specific coin updates
     subscribeToCoin: function(coinId) {
         if (isConnected && coinId) {
-            socket.emit('subscribe_to_coin', { coin_id: coinId });
+            sendWebSocketMessage('subscribe_to_coin', { coin_id: coinId });
             console.log(`Subscribing to ${coinId} updates`);
         }
     },
@@ -232,7 +293,7 @@ window.WebSocketAPI = {
     // Request immediate price data for a coin
     requestLivePrice: function(coinId) {
         if (isConnected) {
-            socket.emit('get_live_price', { coin_id: coinId || 'bitcoin' });
+            sendWebSocketMessage('get_live_price', { coin_id: coinId || 'bitcoin' });
         }
     },
     
@@ -249,21 +310,24 @@ window.WebSocketAPI = {
     // Manually trigger connection
     connect: function() {
         if (!isConnected) {
-            socket.connect();
+            initWebSocket();
         }
     },
     
     // Manually disconnect
     disconnect: function() {
-        if (isConnected) {
-            socket.disconnect();
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.close();
         }
     }
 };
 
-// Auto-subscribe to popular coins when on relevant pages
+// Initialize WebSocket connection when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Wait a bit for the connection to establish
+    // Initialize WebSocket connection
+    initWebSocket();
+    
+    // Wait a bit for the connection to establish, then auto-subscribe
     setTimeout(() => {
         if (isConnected) {
             const pathname = window.location.pathname;
@@ -290,8 +354,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', function() {
-    if (isConnected) {
-        socket.disconnect();
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
     }
 });
 
