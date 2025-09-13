@@ -15,7 +15,6 @@ pattern_analyzer = PatternAnalyzer()
 
 def setup_routes(app: FastAPI):
     """Setup all routes for the FastAPI application"""
-    
     # Initialize templates
     templates = Jinja2Templates(directory="templates")
     
