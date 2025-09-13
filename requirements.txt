@@ -114,3 +114,5 @@ jinja2
 python-multipart
 uvicorn[standard]
 websockets
+starlette
+uvicorn[standard]
