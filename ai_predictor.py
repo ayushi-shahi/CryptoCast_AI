@@ -41,7 +41,6 @@ class AIPredictor:
         # Time-based features
         df['hour'] = df['timestamp'].dt.hour
         df['day_of_week'] = df['timestamp'].dt.dayofweek
-        
         return df.dropna()
     
     def _calculate_rsi(self, prices, window=14):
