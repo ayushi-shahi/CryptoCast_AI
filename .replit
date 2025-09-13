@@ -2,7 +2,7 @@ modules = ["web", "python-3.11", "nodejs-20"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["glibcLocales", "iana-etc", "libxcrypt", "openssl", "pkg-config", "postgresql", "xsimd"]
+packages = ["cacert", "glibcLocales", "iana-etc", "libxcrypt", "openssl", "pkg-config", "postgresql", "xsimd"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -44,6 +44,10 @@ args = "uv add requests numpy pandas scikit-learn scipy"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 39347
+externalPort = 3000
 
 [agent]
 integrations = ["styling_replit==1.0.0"]
