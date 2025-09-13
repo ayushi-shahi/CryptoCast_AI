@@ -66,7 +66,8 @@ def setup_routes(app: FastAPI):
     async def get_predictions(coin_id: str):
         """API endpoint for AI price predictions"""
         try:
-            historical_data = crypto_service.get_coin_history(coin_id, 30)
+            # Use 7 days instead of 30 for faster processing
+            historical_data = crypto_service.get_coin_history(coin_id, 7)
             predictions = ai_predictor.predict_price(historical_data)
             return predictions
         except Exception as e:
@@ -77,7 +78,8 @@ def setup_routes(app: FastAPI):
     async def get_patterns(coin_id: str):
         """API endpoint for pattern analysis"""
         try:
-            historical_data = crypto_service.get_coin_history(coin_id, 30)
+            # Use 14 days for patterns (balance between accuracy and speed)
+            historical_data = crypto_service.get_coin_history(coin_id, 14)
             patterns = pattern_analyzer.analyze_patterns(historical_data)
             return patterns
         except Exception as e:

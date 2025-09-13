@@ -56,7 +56,7 @@ class AIPredictor:
         """Generate price predictions using multiple models"""
         try:
             prices = historical_data['prices']
-            if len(prices) < 20:
+            if len(prices) < 10:  # Reduced minimum for faster processing
                 return {'error': 'Insufficient historical data for prediction'}
             
             df = self._prepare_features(prices)
@@ -66,7 +66,7 @@ class AIPredictor:
             X = df[feature_columns].values
             y = df['price'].values
             
-            if len(X) < 10:
+            if len(X) < 5:  # Reduced minimum for faster processing
                 return {'error': 'Not enough clean data for prediction'}
             
             # Split data
@@ -97,12 +97,12 @@ class AIPredictor:
                 last_features = X_train_scaled[-1:] if len(X_train_scaled) > 0 else X_test_scaled[-1:]
                 future_predictions = []
                 
-                for i in range(24):  # 24 hours ahead
+                for i in range(12):  # 12 hours ahead for faster processing
                     pred = model.predict(last_features)[0]
                     future_predictions.append(float(pred))
                     # Update features for next prediction (simplified)
                     if len(last_features[0]) > 0:
-                        last_features = last_features.copy()
+                        last_features = np.copy(last_features)
                         last_features[0, 0] = (pred - df['price'].iloc[-1]) / df['price'].iloc[-1]  # price_change
                 
                 predictions[name] = future_predictions
@@ -110,7 +110,7 @@ class AIPredictor:
             # Generate timestamps for predictions
             last_timestamp = datetime.fromtimestamp(prices[-1][0] / 1000)
             prediction_timestamps = []
-            for i in range(24):
+            for i in range(12):  # Match the reduced prediction horizon
                 pred_time = last_timestamp + timedelta(hours=i+1)
                 prediction_timestamps.append(pred_time.isoformat())
             
