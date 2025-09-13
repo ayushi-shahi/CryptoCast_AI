@@ -109,3 +109,8 @@ pandas
 requests
 scikit-learn
 scipy
+fastapi
+jinja2
+python-multipart
+uvicorn[standard]
+websockets
