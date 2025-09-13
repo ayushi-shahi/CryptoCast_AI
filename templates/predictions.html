@@ -221,46 +221,63 @@ function displayPredictions(data) {
     document.getElementById('comparisonSection').style.display = 'block';
     document.getElementById('predictionDetails').style.display = 'block';
     
-    // Update summary
-    document.getElementById('currentPrice').textContent = `$${data.current_price.toFixed(2)}`;
+    // ---- Safe Current Price ----
+    const price = (typeof data.current_price === "number") ? data.current_price : 0;
+    document.getElementById('currentPrice').textContent = `$${price.toFixed(2)}`;
     
-    if (data.predictions.random_forest && data.predictions.random_forest.length > 0) {
+    // ---- Safe Predictions ----
+    if (data.predictions && Array.isArray(data.predictions.random_forest) && data.predictions.random_forest.length > 0) {
         document.getElementById('predicted1h').textContent = `$${data.predictions.random_forest[0].toFixed(2)}`;
-        document.getElementById('predicted24h').textContent = `$${data.predictions.random_forest[23].toFixed(2)}`;
+        document.getElementById('predicted24h').textContent = `$${data.predictions.random_forest[23]?.toFixed(2) || "N/A"}`;
+    } else {
+        document.getElementById('predicted1h').textContent = "N/A";
+        document.getElementById('predicted24h').textContent = "N/A";
     }
     
-    document.getElementById('confidenceLevel').textContent = data.confidence_level;
-    document.getElementById('confidenceLevel').className = `badge ${getConfidenceBadgeClass(data.confidence_level)}`;
+    // ---- Confidence ----
+    const confidence = data.confidence_level || "Unknown";
+    document.getElementById('confidenceLevel').textContent = confidence;
+    document.getElementById('confidenceLevel').className = `badge ${getConfidenceBadgeClass(confidence)}`;
     
+    // ---- Recommendation ----
     if (data.recommendation) {
-        document.getElementById('recommendation').textContent = data.recommendation.action;
-        document.getElementById('recommendation').className = `badge ${getRecommendationBadgeClass(data.recommendation.action)}`;
-        document.getElementById('signalStrength').textContent = data.recommendation.confidence;
+        document.getElementById('recommendation').textContent = data.recommendation.action || "N/A";
+        document.getElementById('recommendation').className = `badge ${getRecommendationBadgeClass(data.recommendation.action || "")}`;
+        document.getElementById('signalStrength').textContent = data.recommendation.confidence || "N/A";
     }
     
-    // Update model performance
-    updateModelPerformance(data.model_performance);
+    // ---- Model Performance ----
+    if (data.model_performance) {
+        updateModelPerformance(data.model_performance);
+    }
     
-    // Create charts
-    createPredictionChart(data);
-    createComparisonChart(data);
-    createModelCharts(data);
+    // ---- Charts ----
+    if (data.predictions) {
+        createPredictionChart(data);
+        createComparisonChart(data);
+        createModelCharts(data);
+    }
 }
 
 function updateModelPerformance(performance) {
     const container = document.getElementById('modelPerformance');
     container.innerHTML = '';
     
+    if (!performance) return;
+    
     Object.entries(performance).forEach(([model, metrics]) => {
+        const acc = (metrics && typeof metrics.accuracy === "number") ? metrics.accuracy : 0;
+        const rmse = (metrics && typeof metrics.rmse === "number") ? metrics.rmse : 0;
+
         const modelDiv = document.createElement('div');
         modelDiv.className = 'mb-2';
         modelDiv.innerHTML = `
             <div class="d-flex justify-content-between">
                 <small>${model.replace('_', ' ').toUpperCase()}</small>
-                <small class="text-success">${metrics.accuracy.toFixed(1)}%</small>
+                <small class="text-success">${acc.toFixed(1)}%</small>
             </div>
             <div class="progress" style="height: 5px;">
-                <div class="progress-bar" role="progressbar" style="width: ${metrics.accuracy}%"></div>
+                <div class="progress-bar" role="progressbar" style="width: ${acc}%"></div>
             </div>
         `;
         container.appendChild(modelDiv);
